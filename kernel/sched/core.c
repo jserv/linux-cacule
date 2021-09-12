@@ -9007,14 +9007,6 @@ void __init sched_init(void)
 	BUG_ON(&dl_sched_class + 1 != &stop_sched_class);
 #endif
 
-#ifdef CONFIG_CACULE_SCHED
-#ifdef CONFIG_CACULE_RDB
-	printk(KERN_INFO "CacULE CPU scheduler (RDB) v5.14 by Hamad Al Marri.");
-#else
-	printk(KERN_INFO "CacULE CPU scheduler v5.14 by Hamad Al Marri.");
-#endif
-#endif
-
 	wait_bit_init();
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
