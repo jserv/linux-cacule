@@ -851,6 +851,7 @@ config CACULE_RDB
 	bool "RDB (Response Driven Balancer)"
 	default y
 	depends on CACULE_SCHED
+	depends on SMP
 	help
 	  This is an experimental load balancer for CacULE. It is a lightweight
 	  load balancer which is a replacement of CFS load balancer. It migrates
