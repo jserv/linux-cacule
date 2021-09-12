@@ -736,51 +736,25 @@ static void update_IS(struct rq *rq)
 static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *_se)
 {
 	struct cacule_node *se = &(_se->cacule_node);
+	skiplist_node *sl_node = &(_se->sl_node);
+	u64 key = calc_interactivity(sched_clock(), se);
 
-	se->next = NULL;
-	se->prev = NULL;
-
-	if (cfs_rq->head) {
-		// insert se at head
-		se->next		= cfs_rq->head;
-		cfs_rq->head->prev	= se;
-
-		// lastly reset the head
-		cfs_rq->head		= se;
-	} else {
-		// if empty rq
-		cfs_rq->head = se;
-	}
+	unsigned int randseed = (sched_clock() >> 10) & 0xFFFFFFFF; // FIXME
+	skiplist_insert(cfs_rq->sl, sl_node, key, se, randseed);
 }
 
 static void __dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *_se)
 {
-	struct cacule_node *se = &(_se->cacule_node);
+	skiplist_node *sl_node = &(_se->sl_node);
 
-	// if only one se in rq
-	if (cfs_rq->head->next == NULL) {
-		cfs_rq->head = NULL;
-	} else if (se == cfs_rq->head) {
-		// if it is the head
-		cfs_rq->head		= cfs_rq->head->next;
-		cfs_rq->head->prev	= NULL;
-	} else {
-		// if in the middle
-		struct cacule_node *prev = se->prev;
-		struct cacule_node *next = se->next;
-
-		prev->next = next;
-		if (next)
-			next->prev = prev;
-	}
+	skiplist_delete(cfs_rq->sl, sl_node);
 }
 
 struct sched_entity *__pick_first_entity(struct cfs_rq *cfs_rq)
 {
-	if (!cfs_rq->head)
-		return NULL;
-
-	return se_of(cfs_rq->head);
+	struct cacule_node *head = (struct cacule_node *)
+				cfs_rq->sl_node->next[0]->value;
+	return se_of(head);
 }
 #else
 /*
@@ -4823,25 +4797,17 @@ set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 static struct sched_entity *
 pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 {
-	struct cacule_node *se = cfs_rq->head;
-	struct cacule_node *next;
+	struct cacule_node *next = NULL;
 	u64 now = sched_clock();
 
-	if (!se)
+	if (!cfs_rq->sl->entries)
 		return curr;
 
-	next = se->next;
-	while (next) {
-		if (entity_before(now, se, next) == 1)
-			se = next;
-
-		next = next->next;
-	}
-
-	if (curr && entity_before(now, se, &curr->cacule_node) == 1)
+	next = (struct cacule_node *)cfs_rq->sl_node->next[0]->value;
+	if (curr && entity_before(now, next, &curr->cacule_node) == 1)
 		return curr;
 
-	return se_of(se);
+	return se_of(next);
 }
 #else
 static int
@@ -5690,6 +5656,9 @@ void init_cfs_bandwidth(struct cfs_bandwidth *cfs_b)
 
 static void init_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 {
+#ifdef CONFIG_CACULE_SCHED
+	skiplist_node *newSkiplistNode = NULL;
+#endif
 	cfs_rq->runtime_enabled = 0;
 	INIT_LIST_HEAD(&cfs_rq->throttled_list);
 }
@@ -12211,7 +12180,9 @@ void init_cfs_rq(struct cfs_rq *cfs_rq)
 #endif
 
 #ifdef CONFIG_CACULE_SCHED
-	cfs_rq->head = NULL;
+	cfs_rq->sl_node = kmalloc(sizeof(skiplist_node), GFP_ATOMIC);
+	skiplist_init(cfs_rq->sl_node);
+	cfs_rq->sl = new_skiplist(cfs_rq->sl_node);
 #endif
 }
 

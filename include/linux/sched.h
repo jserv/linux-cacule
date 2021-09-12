@@ -26,6 +26,7 @@
 #include <linux/latencytop.h>
 #include <linux/sched/prio.h>
 #include <linux/sched/types.h>
+#include <linux/skiplist.h>
 #include <linux/signal_types.h>
 #include <linux/syscall_user_dispatch.h>
 #include <linux/mm_types_task.h>
@@ -464,8 +465,6 @@ struct sched_statistics {
 
 #ifdef CONFIG_CACULE_SCHED
 struct cacule_node {
-	struct cacule_node* 		next;
-	struct cacule_node* 		prev;
 	u64				cacule_start_time;
 	u64				last_run;
 	u64				vruntime;
@@ -478,6 +477,7 @@ struct sched_entity {
 	struct rb_node			run_node;
 #ifdef CONFIG_CACULE_SCHED
 	struct cacule_node		cacule_node;
+    skiplist_node           sl_node;
 #endif
 	struct list_head		group_node;
 	unsigned int			on_rq;
