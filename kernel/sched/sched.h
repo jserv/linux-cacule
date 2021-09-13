@@ -21,6 +21,7 @@
 #include <linux/sched/nohz.h>
 #include <linux/sched/numa_balancing.h>
 #include <linux/sched/prio.h>
+#include <linux/random.h>
 #include <linux/sched/rt.h>
 #include <linux/sched/signal.h>
 #include <linux/sched/smt.h>
@@ -555,6 +556,7 @@ struct cfs_rq {
 #ifdef CONFIG_CACULE_SCHED
 	skiplist *sl;
 	skiplist_node *sl_node;
+	u64 rng;
 #else
 	struct sched_entity	*next;
 	struct sched_entity	*last;

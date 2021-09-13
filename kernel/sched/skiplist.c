@@ -50,100 +50,99 @@ aid of prev<->next pointer manipulation and no searching.
 
 #include <linux/skiplist.h>
 
-#define MaxNumberOfLevels 8
-#define MaxLevel (MaxNumberOfLevels - 1)
-
 void skiplist_init(skiplist_node *slnode)
 {
-    int i;
+	int i;
 
-    slnode->key = 0xFFFFFFFFFFFFFFFF;
-    slnode->level = 0;
-    slnode->value = NULL;
-    for (i = 0; i < MaxNumberOfLevels; i++)
-        slnode->next[i] = slnode->prev[i] = slnode;
+	slnode->key = 0xFFFFFFFFFFFFFFFF;
+	slnode->level = 0;
+	slnode->value = NULL;
+	for (i = 0; i < MaxNumberOfLevels; i++)
+		slnode->next[i] = slnode->prev[i] = slnode;
 }
 
 skiplist *new_skiplist(skiplist_node *slnode)
 {
-    skiplist *l = kzalloc(sizeof(skiplist), GFP_ATOMIC);
+	skiplist *l = kzalloc(sizeof(skiplist), GFP_ATOMIC);
 
-    BUG_ON(!l);
-    l->header = slnode;
-    return l;
+	BUG_ON(!l);
+	l->header = slnode;
+	return l;
 }
 
 void free_skiplist(skiplist *l)
 {
-    skiplist_node *p, *q;
+	skiplist_node *p, *q;
 
-    p = l->header;
-    do {
-        q = p->next[0];
-        p->next[0]->prev[0] = q->prev[0];
-        skiplist_node_init(p);
-        p = q;
-    } while (p != l->header);
-    kfree(l);
+	p = l->header;
+	do {
+		q = p->next[0];
+		p->next[0]->prev[0] = q->prev[0];
+		skiplist_node_init(p);
+		p = q;
+	} while (p != l->header);
+	kfree(l);
 }
 
 void skiplist_node_init(skiplist_node *node)
 {
-    memset(node, 0, sizeof(skiplist_node));
+	memset(node, 0, sizeof(skiplist_node));
 }
 
 static inline unsigned int randomLevel(const long unsigned int randseed)
 {
-    return find_first_bit(&randseed, MaxLevel) / 2;
+	int ret = __ffs(randseed) / 2;
+	BUG_ON(ret >= MaxNumberOfLevels);
+	return ret;
 }
 
 void skiplist_insert(skiplist *l, skiplist_node *node, keyType key,
                      valueType value, unsigned int randseed)
 {
-    skiplist_node *update[MaxNumberOfLevels];
-    skiplist_node *p, *q;
-    int k = l->level;
+	skiplist_node *update[MaxNumberOfLevels];
+	skiplist_node *p, *q;
+	int k = l->level;
 
-    p = l->header;
-    do {
-        while (q = p->next[k], q->key <= key)
-            p = q;
-        update[k] = p;
-    } while (--k >= 0);
+	p = l->header;
+	do {
+		while (q = p->next[k], q->key <= key)
+			p = q;
+		update[k] = p;
+	} while (--k >= 0);
 
-    ++l->entries;
-    k = randomLevel(randseed);
-    if (k > l->level) {
-        k = ++l->level;
-        update[k] = l->header;
-    }
+	++l->entries;
+	k = randomLevel(randseed);
+	if (k > l->level) {
+		k = ++l->level;
+		update[k] = l->header;
+	}
 
-    node->level = k;
-    node->key = key;
-    node->value = value;
-    do {
-        p = update[k];
-        node->next[k] = p->next[k];
-        p->next[k] = node;
-        node->prev[k] = p;
-        node->next[k]->prev[k] = node;
-    } while (--k >= 0);
+	node->level = k;
+	node->key = key;
+	node->value = value;
+	do {
+		p = update[k];
+		node->next[k] = p->next[k];
+		p->next[k] = node;
+		node->prev[k] = p;
+		node->next[k]->prev[k] = node;
+	} while (--k >= 0);
 }
 
 void skiplist_delete(skiplist *l, skiplist_node *node)
 {
-    int k, m = node->level;
+	int k, m = node->level;
 
-    for (k = 0; k <= m; k++) {
-        node->prev[k]->next[k] = node->next[k];
-        node->next[k]->prev[k] = node->prev[k];
-    }
-    skiplist_node_init(node);
-    if (m == l->level) {
-        while (l->header->next[m] == l->header && l->header->prev[m] == l->header &&
-               m > 0)
-            m--;
-        l->level = m;
-    }
-    l->entries--;
+	for (k = 0; k <= m; k++) {
+		node->prev[k]->next[k] = node->next[k];
+		node->next[k]->prev[k] = node->prev[k];
+	}
+	skiplist_node_init(node);
+	if (m == l->level) {
+		while (l->header->next[m] == l->header && l->header->prev[m] == l->header &&
+		       m > 0)
+			m--;
+		l->level = m;
+	}
+	l->entries--;
 }

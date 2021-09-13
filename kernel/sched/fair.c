@@ -739,8 +739,8 @@ static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *_se)
 	skiplist_node *sl_node = &(_se->sl_node);
 	u64 key = calc_interactivity(sched_clock(), se);
 
-	unsigned int randseed = (sched_clock() >> 10) & 0xFFFFFFFF; // FIXME
-	skiplist_insert(cfs_rq->sl, sl_node, key, se, randseed);
+	cfs_rq->rng = next_pseudo_random32(cfs_rq->rng) & 0xFF;
+	skiplist_insert(cfs_rq->sl, sl_node, key, se, cfs_rq->rng);
 }
 
 static void __dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *_se)
@@ -752,8 +752,7 @@ static void __dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *_se)
 
 struct sched_entity *__pick_first_entity(struct cfs_rq *cfs_rq)
 {
-	struct cacule_node *head = (struct cacule_node *)
-				cfs_rq->sl_node->next[0]->value;
+	struct cacule_node *head = (struct cacule_node *)cfs_rq->sl_node->value;
 	return se_of(head);
 }
 #else
@@ -4797,13 +4796,12 @@ set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 static struct sched_entity *
 pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 {
-	struct cacule_node *next = NULL;
+	struct cacule_node *next = (struct cacule_node *)cfs_rq->sl->header->next[0]->value;
 	u64 now = sched_clock();
 
-	if (!cfs_rq->sl->entries)
+	if (!next)
 		return curr;
 
-	next = (struct cacule_node *)cfs_rq->sl_node->next[0]->value;
 	if (curr && entity_before(now, next, &curr->cacule_node) == 1)
 		return curr;
 
@@ -12183,6 +12181,7 @@ void init_cfs_rq(struct cfs_rq *cfs_rq)
 	cfs_rq->sl_node = kmalloc(sizeof(skiplist_node), GFP_ATOMIC);
 	skiplist_init(cfs_rq->sl_node);
 	cfs_rq->sl = new_skiplist(cfs_rq->sl_node);
+	cfs_rq->rng = sched_clock();
 #endif
 }
 

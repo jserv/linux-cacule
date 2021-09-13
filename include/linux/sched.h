@@ -477,7 +477,7 @@ struct sched_entity {
 	struct rb_node			run_node;
 #ifdef CONFIG_CACULE_SCHED
 	struct cacule_node		cacule_node;
-    skiplist_node           sl_node;
+	skiplist_node			sl_node;
 #endif
 	struct list_head		group_node;
 	unsigned int			on_rq;
