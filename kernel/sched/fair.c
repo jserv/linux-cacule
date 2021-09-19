@@ -739,7 +739,7 @@ static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *_se)
 	skiplist_node *sl_node = &(_se->sl_node);
 	u64 key = calc_interactivity(sched_clock(), se);
 
-	cfs_rq->rng = next_pseudo_random32(cfs_rq->rng) & 0xFF;
+	cfs_rq->rng = max(next_pseudo_random32(cfs_rq->rng) & 0xFFFF, (u32)1);
 	skiplist_insert(cfs_rq->sl, sl_node, key, se, cfs_rq->rng);
 }
 

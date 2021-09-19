@@ -3,7 +3,7 @@
 
 #include <linux/slab.h>
 
-#define MaxNumberOfLevels 4
+#define MaxNumberOfLevels 8
 #define MaxLevel (MaxNumberOfLevels - 1)
 
 typedef u64 keyType;
